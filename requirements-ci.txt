@@ -1,0 +1,9 @@
+# CI-specific requirements for sysmlv2_dls
+# Only includes dependencies that are available in CI environments
+
+astropy>=5.0
+numpy>=1.23.2
+pyerfa>=2.0.1.1
+PyYAML>=6.0.0
+packaging>=22.0.0
+requests>=2.22.0
