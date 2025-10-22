@@ -1,7 +1,7 @@
 import pytest
 
 import syside
-from geometry_api.transformations import transformation_matrix, euler_from_matrix
+from transformation_api.transformations import transformation_matrix, euler_from_matrix
 
 # Import your functions (adjust import to your module)
 from geometry_api.geometry_api import components_from_part_world, find_part_with_components
@@ -55,8 +55,13 @@ def _by_name(comps, name):
 
 def test_components_world_pose_and_parent_links():
     model, diagnostics = syside.load_model(sysml_source=SYSML_MODEL)
+    root = None
+    for document_resource in model.documents:
+        with document_resource.lock() as document:
+            print("find the first part with part children:")
+            #root=find_part_by_name(document.root_node, "nx00001")
+            root=find_part_with_components(document.root_node)
 
-    root = find_part_with_components(model.document.root_node)
     assert root is not None
 
     # Treat rx/ry/rz=1.0 as **radians** and use the same Euler sequence as the library
