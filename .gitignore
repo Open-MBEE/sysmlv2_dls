@@ -1,2 +1,5 @@
 /src/geometry_api.egg-info
 /src/geometry_api/__pycache__
+.env
+/src/transformation_api/__pycache__
+/tests/__pycache__

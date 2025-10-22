@@ -4,7 +4,7 @@ import syside
 import math
 import numpy as np
 # Make sure the library is importable; if needed add sys.path.append('/mnt/data')
-from geometry_api.transformations import transformation_matrix, euler_from_matrix  # uses 'sxyz' by default
+from transformation_api.transformations import transformation_matrix, euler_from_matrix  # uses 'sxyz' by default
 
 _components: Dict[str, "Component"] = {}
 
