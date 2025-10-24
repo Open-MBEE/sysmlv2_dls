@@ -3,3 +3,4 @@
 .env
 /src/transformation_api/__pycache__
 /tests/__pycache__
+/build
