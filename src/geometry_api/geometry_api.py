@@ -136,8 +136,10 @@ def walk_ownership_tree(element, level: int = 0) -> None:
         expression_a1 = next(iter(attr.owned_elements), None)
         if expression_a1 is not None and isinstance(expression_a1, syside.LiteralRational):
             print("  " * level, f"{attr.name} = {expression_a1.value}")
-        if expression_a1 is not None and isinstance(expression_a1, syside.LiteralInteger):
+        elif expression_a1 is not None and isinstance(expression_a1, syside.LiteralInteger):
             print("  " * level, f"{attr.name} = {expression_a1.value}")
+        else:
+            print("  " * level, f"{attr.name}", type(expression_a1))
     elif element.name is not None:
         print("  " * level, element.name)
     # Recursively call walk_ownership_tree() for each owned element
@@ -278,11 +280,19 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
             vals = {}
             def collect_attr(e):
                 au = e.try_cast(syside.AttributeUsage)
+                #print("au",au)
                 if not au:
                     return
-                lit = next(iter(au.owned_elements), None)
-                if isinstance(lit, (syside.LiteralRational, syside.LiteralInteger)):
-                    vals[au.name] = float(lit.value)
+                attr = e.cast(syside.AttributeUsage)
+                expression = next(iter(attr.owned_elements), None)
+                if isinstance(expression, (syside.LiteralRational, syside.LiteralInteger)):
+                    #print(f"au={au.name}, lit={type(expression)}, value={expression.value}, parent={type(e)}")
+                    vals[au.name] = float(expression.value)
+                elif expression is not None and isinstance(expression, syside.Expression):
+                    compiler = syside.Compiler()
+                    result, report = compiler.evaluate(expression)
+                    vals[au.name] = float(result)
+          
 
             owned = getattr(el, "owned_elements", None)
             if owned:
@@ -294,8 +304,10 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
 
             # Build local homogeneous transform and compose: T_abs = T_parent @ T_local
             T_local = transformation_matrix((ltx, lty, ltz), (lrx, lry, lrz))  # 'sxyz' convention
+            #print("T_local" , T_local)
+            #print("parent_state " , parent_state["T"])
             T_abs = parent_state["T"] @ T_local
-
+            #print("tabs", T_abs)
             # Propagate transform down regardless of whether this node becomes a 'component'
             next_state["T"] = T_abs
 
@@ -306,7 +318,7 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
                 # (same axes convention as the library: 'sxyz')
                 arx, ary, arz = euler_from_matrix(T_abs, axes=euler_axes)
                 abs_tx, abs_ty, abs_tz = T_abs[0, 3], T_abs[1, 3], T_abs[2, 3]
-
+                #print("abs_tx, abs_ty, abs_tz",abs_tx,abs_ty, abs_tz)
                 if angles_in_degrees:
                     arx, ary, arz = to_deg(arx), to_deg(ary), to_deg(arz)
 
