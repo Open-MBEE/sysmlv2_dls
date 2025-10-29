@@ -233,6 +233,49 @@ def components_from_part(root):
     return out
 
 
+def find_partusage_by_definition(elem, defining_part_name: str):
+    """
+    Return the FIRST/HIGHEST PartUsage whose PartDefinition name matches `defining_part_name`.
+    Uses syside.core LazyIterators for part_definitions.
+    """
+    def has_matching_def(node):
+        """Return True if this PartUsage has a PartDefinition with the given name."""
+        if not node.try_cast(syside.PartUsage):
+            return False
+        try:
+            for pd in node.part_definitions:  # LazyIterator over PartDefinitions
+                if getattr(pd, "name", None) == defining_part_name:
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def dfs(node):
+        is_part = bool(node.try_cast(syside.PartUsage))
+        here_matches = has_matching_def(node)
+
+        subtree_has_match = here_matches
+        child_found = None
+
+        for ch in _children_iter(node):
+            found, child_has = dfs(ch)
+            subtree_has_match = subtree_has_match or child_has or (found is not None)
+            if found is not None and child_found is None:
+                child_found = found
+
+        if is_part and subtree_has_match:
+            return node, True
+
+        if child_found is not None:
+            return child_found, True
+
+        return None, subtree_has_match
+
+    found, _ = dfs(elem)
+    return found
+
+
+
 def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxyz'):
     """
     Traverse a PartUsage subtree and return a flat list of component dicts with:
@@ -288,6 +331,8 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
                 if isinstance(expression, (syside.LiteralRational, syside.LiteralInteger)):
                     #print(f"au={au.name}, lit={type(expression)}, value={expression.value}, parent={type(e)}")
                     vals[au.name] = float(expression.value)
+                elif isinstance(expression, syside.LiteralString):
+                    vals[au.name] = str(expression.value)
                 elif expression is not None and isinstance(expression, syside.Expression):
                     compiler = syside.Compiler()
                     result, report = compiler.evaluate(expression)
@@ -311,9 +356,8 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
             # Propagate transform down regardless of whether this node becomes a 'component'
             next_state["T"] = T_abs
 
-            if "typeID" in vals:
-                type_id = int(vals["typeID"])
-
+            
+            if True:
                 # Extract absolute/world pose back to Euler+translation
                 # (same axes convention as the library: 'sxyz')
                 arx, ary, arz = euler_from_matrix(T_abs, axes=euler_axes)
@@ -324,7 +368,7 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
 
                 rec = {
                     "name": part.name or "",
-                    "typeID": type_id,
+                   # "typeID": type_id,
 
                     # local pose (relative to parent; unchanged from source data)
                     "tx": ltx, "ty": lty, "tz": ltz,
@@ -339,11 +383,14 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
                     # nearest component ancestor (same behavior as your original)
                     "parent_name": parent_state["comp_parent"][0] if parent_state["comp_parent"] else None,
                     "parent_typeID": parent_state["comp_parent"][1] if parent_state["comp_parent"] else None,
+
+                    # optional metadata
+                    "onshape_url": vals.get("onshape_url"),
                 }
                 out.append(_normalize(rec))
 
                 # This node becomes the nearest component ancestor for its descendants
-                next_state["comp_parent"] = (rec["name"], rec["typeID"])
+                next_state["comp_parent"] = (rec["name"])
 
         # Recurse
         children = getattr(el, "owned_elements", None)
@@ -364,60 +411,53 @@ def _children_iter(elem):
         children.for_each(lambda e: out.append(e))
         return out
 
-def _has_numeric_typeid(part_el):
-    """True iff this PartUsage has an AttributeUsage named 'typeID'
-    whose first owned element is a numeric literal."""
-    owned = getattr(part_el, "owned_elements", None)
-    if not owned:
-        return False
 
-    found = False
-    def visit_attr(e):
-        nonlocal found
-        if found:
-            return
-        au = e.try_cast(syside.AttributeUsage)
-        if not au or au.name != "typeID":
-            return
-        lit = next(iter(au.owned_elements), None)
-        if isinstance(lit, (syside.LiteralInteger, syside.LiteralRational)):
-            found = True
-
-    owned.for_each(visit_attr)
-    return found
-
-def find_part_with_components(elem):
+def find_component_partusage(elem):
     """
-    Return the FIRST/HIGHEST PartUsage whose subtree contains at least one
-    PartUsage with a numeric 'typeID'. Single DFS; no transform work.
+    Return the FIRST/HIGHEST PartUsage whose PartDefinition name is "Component".
+    Works with SysIDE's Python SysMLv2 API.
     """
+    def get_part_def(node):
+        """Try to get the PartDefinition object for a PartUsage node."""
+        # Try several known API patterns
+        for attr in ("definition", "defining_feature", "definer", "part_definition", "usage_definition"):
+            val = getattr(node, attr, None)
+            if val is not None:
+                return val
+        # Some APIs expose a method
+        if hasattr(node, "get_definition"):
+            try:
+                return node.get_definition()
+            except Exception:
+                pass
+        return None
+
     def dfs(node):
-        # returns (found_topmost_partusage_or_None, subtree_has_any_component: bool)
         is_part = bool(node.try_cast(syside.PartUsage))
-        here_is_component = is_part and _has_numeric_typeid(node)
+        here_is_component = False
+
+        if is_part:
+            part_def = get_part_def(node)
+            if part_def and getattr(part_def, "name", None) == "Component":
+                here_is_component = True
 
         subtree_has_component = here_is_component
         child_found = None
 
         for ch in _children_iter(node):
             found, child_has = dfs(ch)
-            # Accumulate whether *anywhere* below there is a component
             subtree_has_component = subtree_has_component or child_has or (found is not None)
-            # Remember a found child (don’t overwrite first found)
             if found is not None and child_found is None:
                 child_found = found
 
-        # If THIS node is a PartUsage and its subtree (incl. itself) has any component,
-        # this is the topmost qualifying node—return it.
         if is_part and subtree_has_component:
             return node, True
 
-        # Otherwise, if a child already found its own topmost PartUsage, bubble it up.
         if child_found is not None:
             return child_found, True
 
-        # Nothing found yet; propagate whether this subtree has any components at all.
         return None, subtree_has_component
 
     found, _ = dfs(elem)
     return found
+
