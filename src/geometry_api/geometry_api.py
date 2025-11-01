@@ -233,26 +233,37 @@ def components_from_part(root):
     return out
 
 
-def find_partusage_by_definition(elem, defining_part_name: str):
+def find_partusage_by_definition(elem, defining_part_name: str, usage_name: str | None = None):
     """
-    Return the FIRST/HIGHEST PartUsage whose PartDefinition name matches `defining_part_name`.
-    Uses syside.core LazyIterators for part_definitions.
+    Return the FIRST/HIGHEST PartUsage whose PartDefinition name matches `defining_part_name`
+    and optionally whose own PartUsage.name matches `usage_name`.
+
+    Parameters:
+      elem                : SysML AST root node for traversal.
+      defining_part_name  : The PartDefinition.name to match (e.g., "Component").
+      usage_name          : Optional PartUsage.name to filter on (e.g., "rootmodule").
     """
     def has_matching_def(node):
         """Return True if this PartUsage has a PartDefinition with the given name."""
         if not node.try_cast(syside.PartUsage):
             return False
         try:
-            for pd in node.part_definitions:  # LazyIterator over PartDefinitions
+            for pd in node.part_definitions:
                 if getattr(pd, "name", None) == defining_part_name:
                     return True
         except Exception:
             pass
         return False
 
+    def matches_usage_name(node):
+        """Optional check that PartUsage.name matches the filter (if provided)."""
+        if usage_name is None:
+            return True
+        return getattr(node, "name", None) == usage_name
+
     def dfs(node):
         is_part = bool(node.try_cast(syside.PartUsage))
-        here_matches = has_matching_def(node)
+        here_matches = is_part and has_matching_def(node) and matches_usage_name(node)
 
         subtree_has_match = here_matches
         child_found = None
@@ -263,8 +274,8 @@ def find_partusage_by_definition(elem, defining_part_name: str):
             if found is not None and child_found is None:
                 child_found = found
 
-        if is_part and subtree_has_match:
-            return node, True
+        if here_matches:
+            return node, True  # this node satisfies the filters, return it
 
         if child_found is not None:
             return child_found, True
@@ -314,7 +325,7 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
                 "T": np.identity(4),
                 "comp_parent": None,
             }
-
+        
         part = el.try_cast(syside.PartUsage)
         next_state = dict(parent_state)
 
