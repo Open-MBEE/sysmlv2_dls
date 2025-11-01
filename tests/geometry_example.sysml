@@ -19,7 +19,7 @@ package DemoStructure {
     }
 
     part def Context {
-        part rootmodule :Component {
+        part geometryroot :Component {
             part nexus: Onshape_Component,Omniverse_Component subsets children {
                 attribute :>> tx=0.0;
                 attribute :>> ty=0.0;
