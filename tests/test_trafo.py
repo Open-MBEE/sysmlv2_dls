@@ -4,7 +4,7 @@ import syside
 from transformation_api.transformations import transformation_matrix, euler_from_matrix
 
 # Import your functions (adjust import to your module)
-from geometry_api.geometry_api import components_from_part_world, find_part_with_components
+from geometry_api.geometry_api import components_from_part_world, find_component_partusage
 
 SYSML_MODEL = r"""
 package MyStructure {
@@ -60,7 +60,7 @@ def test_components_world_pose_and_parent_links():
         with document_resource.lock() as document:
             print("find the first part with part children:")
             #root=find_part_by_name(document.root_node, "nx00001")
-            root=find_part_with_components(document.root_node)
+            root=find_component_partusage(document.root_node)
 
     assert root is not None
 
