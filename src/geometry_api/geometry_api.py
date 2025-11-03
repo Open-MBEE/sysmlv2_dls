@@ -9,6 +9,14 @@ from transformation_api.transformations import transformation_matrix, euler_from
 _components: Dict[str, "Component"] = {}
 
 pu_geometry_pkg = '''
+
+    part def Onshape_Component {
+        attribute onshape_url;
+    }
+    part def Omniverse_Component {
+        attribute ov_filepath;
+    }
+
     part def Component{
         attribute tx;
         attribute ty;
@@ -45,7 +53,7 @@ class Component:
     def to_textual(self, indent: int = 0) -> str:
         ind = " " * indent
         lines = [
-            f"{ind}part {self.name} subsets children {{",
+            f"{ind}part {self.name}: Onshape_Component, Omniverse_Component subsets children {{",
             f"{ind}    attribute :>> tx={self.translation.x};",
             f"{ind}    attribute :>> ty={self.translation.y};",
             f"{ind}    attribute :>> tz={self.translation.z};",
