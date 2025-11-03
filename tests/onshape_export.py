@@ -22,7 +22,7 @@ import numpy as np
 import syside
 
 from geometry_api.geometry_api import components_from_part_world, find_partusage_by_definition
-from onshape_api.onshape_helper import (
+from onshape_connector.onshape_helper import (
     get_onshape_client,
     insert_assembly_from_url,
     transform_by_name,
