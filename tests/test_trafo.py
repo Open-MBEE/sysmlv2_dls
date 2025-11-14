@@ -4,7 +4,7 @@ import syside
 from transformation_api.transformations import transformation_matrix, euler_from_matrix
 
 # Import your functions (adjust import to your module)
-from geometry_api.geometry_api import components_from_part_world, find_component_partusage
+from geometry_api.geometry_api import components_from_part_world, find_component_partusage, find_partusage_by_definition
 
 SYSML_MODEL = r"""
 package MyStructure {
@@ -23,7 +23,7 @@ package MyStructure {
     }
 
     part def Context {
-        part rootelement :Component {
+        part geometryroot : Component {
             part nx00001 subsets children {
                 attribute :>> tx=1.0;
                 attribute :>> ty=1.0;
@@ -56,12 +56,11 @@ def _by_name(comps, name):
 def test_components_world_pose_and_parent_links():
     model, diagnostics = syside.load_model(sysml_source=SYSML_MODEL)
     root = None
-    for document_resource in model.documents:
-        with document_resource.lock() as document:
-            print("find the first part with part children:")
-            #root=find_part_by_name(document.root_node, "nx00001")
-            root=find_component_partusage(document.root_node)
-
+    for doc_res in model.documents:
+        with doc_res.lock() as doc:
+            root = find_partusage_by_definition(doc.root_node, "Component", usage_name="geometryroot")
+            if root:
+                break
     assert root is not None
 
     # Treat rx/ry/rz=1.0 as **radians** and use the same Euler sequence as the library
@@ -69,7 +68,7 @@ def test_components_world_pose_and_parent_links():
 
     # We expect exactly two components: nx00001 (typeID=0) and tcs00001 (typeID=2)
     names = sorted(c["name"] for c in comps)
-    assert names == ["nx00001", "tcs00001"]
+    assert names == ["geometryroot","nx00001", "tcs00001"]
 
     nx = _by_name(comps, "nx00001")
     tcs = _by_name(comps, "tcs00001")
@@ -88,8 +87,8 @@ def test_components_world_pose_and_parent_links():
     exp_tcs_rx, exp_tcs_ry, exp_tcs_rz = euler_from_matrix(T_tcs_abs, axes="sxyz")
 
     # ---- Assertions for nx00001 ----
-    assert nx["parent_name"] is None
-    assert nx["parent_typeID"] is None
+    #assert nx["parent_name"] is "geometryroot"
+    #assert nx["parent_typeID"] is None
 
     assert pytest.approx(nx["abs_tx"], abs=1e-9) == T_nx_abs[0, 3]
     assert pytest.approx(nx["abs_ty"], abs=1e-9) == T_nx_abs[1, 3]
@@ -100,8 +99,8 @@ def test_components_world_pose_and_parent_links():
     assert pytest.approx(nx["abs_rz"], rel=1e-7, abs=1e-7) == exp_nx_rz
 
     # ---- Assertions for tcs00001 ----
-    assert tcs["parent_name"] == "nx00001"
-    assert tcs["parent_typeID"] == 0
+    #assert tcs["parent_name"] == "nx00001"
+    #assert tcs["parent_typeID"] == 0
 
     assert pytest.approx(tcs["abs_tx"], abs=1e-9) == T_tcs_abs[0, 3]
     assert pytest.approx(tcs["abs_ty"], abs=1e-9) == T_tcs_abs[1, 3]

@@ -6,6 +6,10 @@ package DemoStructure {
     part def Omniverse_Component {
         attribute ov_filepath;
     }
+    part def AttitudeSolari :> Onshape_Component{
+    	attribute :>> onshape_url = "https://cad.onshape.com/documents/4a29c75993840faff03a0c45/w/64843d9e906f6a84703e03a0/e/fdc17e965aef7326b7f8c27c";
+
+    }
     
     part def Component{
         attribute tx;
@@ -19,7 +23,7 @@ package DemoStructure {
     }
 
     part def Context {
-        part geometryroot :Component {
+        part geometryroot :Component, Onshape_Component,Omniverse_Component {
             part nexus: Onshape_Component,Omniverse_Component subsets children {
                 attribute :>> tx=0.0;
                 attribute :>> ty=0.0;

@@ -480,3 +480,108 @@ def find_component_partusage(elem):
     found, _ = dfs(elem)
     return found
 
+def load_from_sysml(root, clear_existing: bool = True):
+    """
+    Inverse of get_sysmlv2_text():
+    Reads a SysMLv2 model (from syside) starting at `root` and rebuilds the
+    Python Component hierarchy (_components dict).
+
+    Args:
+        root: SysIDE model element (e.g., the Context or Component PartUsage).
+        clear_existing: If True, clears any previous _components registry.
+    Returns:
+        The root Component object reconstructed from the model.
+    """
+    if clear_existing:
+        _components.clear()
+
+    def collect_attrs(el):
+        """Collect numeric and string attribute values under a PartUsage element."""
+        vals = {}
+        if not hasattr(el, "owned_elements"):
+            return vals
+        el.owned_elements.for_each(lambda e: _collect_attr(e, vals))
+        return vals
+
+    def _collect_attr(e, vals):
+        au = e.try_cast(syside.AttributeUsage)
+        if not au:
+            return
+        expression = next(iter(au.owned_elements), None)
+        if isinstance(expression, (syside.LiteralRational, syside.LiteralInteger)):
+            vals[au.name] = float(expression.value)
+        elif isinstance(expression, syside.LiteralString):
+            vals[au.name] = str(expression.value)
+
+
+    
+    def visit(el, parent_component=None, level=0):
+            indent = "  " * level
+            try:
+                name = getattr(el, "name", None)
+            except Exception:
+                name = None
+            #print(f"{indent}▶ Visiting element: {name or type(el)}")
+
+            # Try to cast to PartUsage
+            part = el.try_cast(syside.PartUsage)
+            if part:
+                #print(f"{indent}  ✓ is PartUsage: {part.name}")
+                vals = collect_attrs(el)
+                #print(f"{indent}    attributes found: {vals}")
+
+                # Check for typeID or Component definition
+                has_typeid = "typeID" in vals
+                part_defs = getattr(part, "part_definitions", [])
+                def_names = [getattr(pd, "name", None) for pd in part_defs]
+                #print(f"{indent}    part_definitions: {def_names}")
+
+                has_component_def = any(n == "Component" for n in def_names)
+                #print(f"{indent}    has_typeid={has_typeid}, has_component_def={has_component_def}")
+
+                if has_typeid or has_component_def:
+                    type_id = int(vals.get("typeID", len(_components) + 1))
+                    #print(f"{indent}    → creating Component(name={part.name}, typeID={type_id})")
+
+                    translation = CartesianRepresentation(
+                        vals.get("tx", 0.0),
+                        vals.get("ty", 0.0),
+                        vals.get("tz", 0.0),
+                    )
+                    rotation = CartesianRepresentation(
+                        vals.get("rx", 0.0),
+                        vals.get("ry", 0.0),
+                        vals.get("rz", 0.0),
+                    )
+
+                    this_component = Component(
+                        name=part.name or f"Unnamed_{len(_components)}",
+                        typeID=type_id,
+                        translation=translation,
+                        rotation=rotation,
+                        parent=parent_component,
+                    )
+                    _components[this_component.name] = this_component
+                    #print (this_component.name, this_component.typeID, this_component.translation, this_component.rotation)
+                    parent_component = this_component
+                #else:
+                #    print(f"{indent}    ✗ skipping (no typeID or Component def)")
+            #else:
+                # Not a PartUsage
+             #   print(f"{indent}  ✗ not a PartUsage")
+
+            # Recurse into owned elements
+            if hasattr(el, "owned_elements"):
+                try:
+                    el.owned_elements.for_each(lambda c: visit(c, parent_component, level + 1))
+                except Exception as e:
+                    print(f"{indent}  ⚠️  Error iterating children of {name}: {e}")
+
+
+    visit(root, None)
+
+    # Return the highest (first) component as the likely root
+    roots = [c for c in _components.values() if c.parent is None]
+    if roots:
+        roots = roots[0]
+    return roots, _components
