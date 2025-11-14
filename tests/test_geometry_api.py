@@ -1,3 +1,4 @@
+from multiprocessing import context
 from annotated_types import doc
 import pytest
 import syside
@@ -101,8 +102,11 @@ def test_load_from_sysml_and_regenerate_text():
             if context:
                 break
 
-    assert context is not None, "Could not find PartUsage for RootComponent"
+    assert context is not None, "Could not find PartUsage for geometryroot"
     print("Loading from SysMLv2 model...")
     root_comp = load_from_sysml(context)
 
     print(root_comp.to_textual())
+#test_load_from_sysml_and_regenerate_text()
+
+
