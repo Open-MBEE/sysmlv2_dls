@@ -562,6 +562,7 @@ def load_from_sysml(root, clear_existing: bool = True):
                         parent=parent_component,
                     )
                     _components[this_component.name] = this_component
+                    #print (this_component.name, this_component.typeID, this_component.translation, this_component.rotation)
                     parent_component = this_component
                 #else:
                 #    print(f"{indent}    ✗ skipping (no typeID or Component def)")
@@ -581,4 +582,6 @@ def load_from_sysml(root, clear_existing: bool = True):
 
     # Return the highest (first) component as the likely root
     roots = [c for c in _components.values() if c.parent is None]
-    return roots[0] if roots else None
+    if roots:
+        roots = roots[0]
+    return roots, _components
