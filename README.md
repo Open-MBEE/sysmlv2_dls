@@ -1,9 +1,10 @@
 # sysmlv2_geometry
 
 ## Overview
-`sysmlv2_geometry` provides a public, Python-based interface for building and
-sharing geometry information that can be consumed by SysML v2 tooling. The
-project currently focuses on two complementary capabilities:
+`sysmlv2_geometry` provides a public, SysML-based specification for 
+sharing geometry information. The idea is that SysML serves as the platform technology that enables specifications to becomce life connections between tools and processes. 
+
+The project currently focuses on two complementary capabilities:
 
 1. A generic, CAD-agnostic representation of assemblies that captures
    translation, rotation, and ownership relationships between components.
