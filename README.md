@@ -16,14 +16,8 @@ engineering tools so that they can all feed geometry into SysML v2 models
 through a single, consistent API.
 
 ## Key capabilities
-- **Generic assembly structure** – The `geometry_api` package exposes endpoints
-  for creating components, nesting them, and exporting the resulting hierarchy
-  as SysML v2 textual notation. This makes it possible to describe assemblies
-  even when the original CAD system is not available.
-- **Onshape connector** – The `onshape_connector` package authenticates with the
-  Onshape public API, walks assembly occurrences, and maps part poses into the
-  generic structure. This is the first CAD integration, with more connectors
-  planned.
+- **Generic assembly structure** – The `geometry_api` package exposes endpoints for importing a geometric assembly from SysML and exporting it to SysML. The components in this module serve as python-space representation which can be used to write integrations to other tools such as the: 
+- **Onshape connector** – The `onshape_connector` package exports geometry assemblies to onshape. It can create new assemblies and position sub-assemblies into the correct locations as specified in SysML. 
 - **Transformation utilities** – The `transformation_api` package bundles
   Christoph Gohlke's `transformations.py` helpers, which are used for converting
   between transformation matrices, Euler angles, and other pose formats.
