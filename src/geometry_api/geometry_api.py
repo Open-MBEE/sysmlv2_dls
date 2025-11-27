@@ -480,7 +480,7 @@ def find_component_partusage(elem):
     found, _ = dfs(elem)
     return found
 
-def load_from_sysml(root, clear_existing: bool = True):
+def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None, dict[str, Component]]:
     """
     Inverse of get_sysmlv2_text():
     Reads a SysMLv2 model (from syside) starting at `root` and rebuilds the
