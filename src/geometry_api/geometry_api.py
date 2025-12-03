@@ -510,10 +510,12 @@ def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None
         expression = next(iter(au.owned_elements), None)
         if isinstance(expression, (syside.LiteralRational, syside.LiteralInteger)):
             vals[au.name] = float(expression.value)
+        elif expression is not None and isinstance(expression, syside.Expression):
+            compiler = syside.Compiler()
+            result, report = compiler.evaluate(expression)
+            vals[au.name] = float(result)
         elif isinstance(expression, syside.LiteralString):
             vals[au.name] = str(expression.value)
-
-
     
     def visit(el, parent_component=None, level=0):
             indent = "  " * level
