@@ -308,10 +308,16 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
 
     # --- helpers to ensure JSON-safe, plain Python floats ---
     def _to_float(x):
+        # keep real ints as ints (but don't treat bool as int)
+        if isinstance(x, bool):
+            return x
+        if isinstance(x, int):
+            return x
         try:
             return float(x)
         except Exception:
             return x
+
 
     def _normalize(d):
         # Cast any numpy scalar/array entries to Python floats
@@ -387,7 +393,7 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
 
                 rec = {
                     "name": part.name or "",
-                   # "typeID": type_id,
+                    "typeID": int(vals.get("typeID",0)),
 
                     # local pose (relative to parent; unchanged from source data)
                     "tx": ltx, "ty": lty, "tz": ltz,
@@ -433,52 +439,46 @@ def _children_iter(elem):
 
 def find_component_partusage(elem):
     """
-    Return the FIRST/HIGHEST PartUsage whose PartDefinition name is "Component".
+    Find the FIRST/HIGHEST PartUsage whose PartDefinition name is "Component"
+    AND that PartUsage has at least one DIRECT child that is a PartUsage.
+    Return that DIRECT child (the first direct PartUsage child encountered).
     Works with SysIDE's Python SysMLv2 API.
     """
-    def get_part_def(node):
-        """Try to get the PartDefinition object for a PartUsage node."""
-        # Try several known API patterns
-        for attr in ("definition", "defining_feature", "definer", "part_definition", "usage_definition"):
-            val = getattr(node, attr, None)
-            if val is not None:
-                return val
-        # Some APIs expose a method
-        if hasattr(node, "get_definition"):
-            try:
-                return node.get_definition()
-            except Exception:
-                pass
+
+    def is_component_partusage(node) -> bool:
+        pu = node.try_cast(syside.PartUsage)
+        if not pu:
+            return False
+        try:
+            for pd in pu.part_definitions:
+                if getattr(pd, "name", None) == "Component":
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def first_direct_partusage_child(node):
+        for ch in _children_iter(node):
+            pu_child = ch.try_cast(syside.PartUsage)
+            if pu_child:
+                return ch  # return the direct child node itself
         return None
 
     def dfs(node):
-        is_part = bool(node.try_cast(syside.PartUsage))
-        here_is_component = False
-
-        if is_part:
-            part_def = get_part_def(node)
-            if part_def and getattr(part_def, "name", None) == "Component":
-                here_is_component = True
-
-        subtree_has_component = here_is_component
-        child_found = None
+        # Pre-order: highest match wins
+        if is_component_partusage(node):
+            direct_child = first_direct_partusage_child(node)
+            if direct_child is not None:
+                return direct_child
 
         for ch in _children_iter(node):
-            found, child_has = dfs(ch)
-            subtree_has_component = subtree_has_component or child_has or (found is not None)
-            if found is not None and child_found is None:
-                child_found = found
+            found = dfs(ch)
+            if found is not None:
+                return found
 
-        if is_part and subtree_has_component:
-            return node, True
+        return None
 
-        if child_found is not None:
-            return child_found, True
-
-        return None, subtree_has_component
-
-    found, _ = dfs(elem)
-    return found
+    return dfs(elem)
 
 def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None, dict[str, Component]]:
     """
