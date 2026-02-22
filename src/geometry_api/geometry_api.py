@@ -454,6 +454,8 @@ def find_component_partusage(elem):
                 if getattr(pd, "name", None) == "Component":
                     return True
         except Exception:
+            # If we cannot inspect part_definitions (API inconsistency or other error),
+            # conservatively treat this node as not being a Component.
             pass
         return False
 
