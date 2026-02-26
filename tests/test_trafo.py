@@ -3,8 +3,8 @@ import pytest
 import syside
 from transformation_api.transformations import transformation_matrix, euler_from_matrix
 
-# Import your functions (adjust import to your module)
-from geometry_api.geometry_api import components_from_part_world, find_component_partusage, find_partusage_by_definition
+from flexo_syside_lib.core import find_partusage_by_definition
+from geometry_api.geometry_api import components_from_part_world
 
 SYSML_MODEL = r"""
 package MyStructure {

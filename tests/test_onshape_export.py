@@ -22,7 +22,8 @@ import numpy as np
 import pytest
 import syside
 
-from geometry_api.geometry_api import components_from_part_world, find_partusage_by_definition
+from flexo_syside_lib.core import find_partusage_by_definition
+from geometry_api.geometry_api import components_from_part_world
 from onshape_api.onshape_helper import (
     get_onshape_client,
     insert_assembly_from_url,

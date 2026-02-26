@@ -124,76 +124,6 @@ def clear_components():
     """Clears all components from the internal store. Useful for testing or resetting."""
     _components.clear()
 
-def walk_ownership_tree(element, level: int = 0) -> None:
-    """
-    Prints out all elements in a model in a tree-like format, where child
-    elements appear indented under their parent elements. For example:
-
-    Parent
-      Child1
-      Child2
-        Grandchild
-
-    Args:
-        element: The model element to start printing from (syside.Element)
-        level: How many levels to indent (increases for nested elements)
-    """
-
-    if element.try_cast(syside.AttributeUsage):
-        attr = element.cast(syside.AttributeUsage)
-        expression_a1 = next(iter(attr.owned_elements), None)
-        if expression_a1 is not None and isinstance(expression_a1, syside.LiteralRational):
-            print("  " * level, f"{attr.name} = {expression_a1.value}")
-        elif expression_a1 is not None and isinstance(expression_a1, syside.LiteralInteger):
-            print("  " * level, f"{attr.name} = {expression_a1.value}")
-        else:
-            print("  " * level, f"{attr.name}", type(expression_a1))
-    elif element.name is not None:
-        print("  " * level, element.name)
-    # Recursively call walk_ownership_tree() for each owned element
-    # (child element).
-    element.owned_elements.for_each(
-        lambda owned_element: walk_ownership_tree(owned_element, level + 1)
-    )
-
-def find_part_by_name(element, name: str, part_level: int = 0):
-    """
-    Depth-first search for a PartUsage by name.
-    Prints the part hierarchy as it goes and returns the first match.
-    
-    Args:
-        element: The model element to search from (syside.Element)
-        name: The part name to find
-        part_level: Current indentation level for printing
-    """
-
-    part = element.try_cast(syside.PartUsage)
-    if part:
-        print("  " * part_level + part.name)
-        if part.name == name:
-            return part
-        part_level += 1  # indent children of parts
-
-    # Iterate children in a way that allows early return
-    children = getattr(element, "owned_elements", None)
-    if not children:
-        return None
-
-    # Try to iterate directly; if not iterable, materialize via for_each
-    try:
-        iterator = iter(children)
-    except TypeError:
-        lst = []
-        children.for_each(lambda e: lst.append(e))
-        iterator = iter(lst)
-
-    for child in iterator:
-        found = find_part_by_name(child, name, part_level)
-        if found is not None:
-            return found
-
-    return None
-
 def components_from_part(root):
     """
     Walk a SysIDE PartUsage sub-tree and return a list of dicts with
@@ -240,61 +170,6 @@ def components_from_part(root):
     visit(root, None)
     return out
 
-
-def find_partusage_by_definition(elem, defining_part_name: str, usage_name: str | None = None):
-    """
-    Return the FIRST/HIGHEST PartUsage whose PartDefinition name matches `defining_part_name`
-    and optionally whose own PartUsage.name matches `usage_name`.
-
-    Parameters:
-      elem                : SysML AST root node for traversal.
-      defining_part_name  : The PartDefinition.name to match (e.g., "Component").
-      usage_name          : Optional PartUsage.name to filter on (e.g., "rootmodule").
-    """
-    def has_matching_def(node):
-        """Return True if this PartUsage has a PartDefinition with the given name."""
-        if not node.try_cast(syside.PartUsage):
-            return False
-        try:
-            for pd in node.part_definitions:
-                if getattr(pd, "name", None) == defining_part_name:
-                    return True
-        except Exception:
-            pass
-        return False
-
-    def matches_usage_name(node):
-        """Optional check that PartUsage.name matches the filter (if provided)."""
-        if usage_name is None:
-            return True
-        return getattr(node, "name", None) == usage_name
-
-    def dfs(node):
-        is_part = bool(node.try_cast(syside.PartUsage))
-        here_matches = is_part and has_matching_def(node) and matches_usage_name(node)
-
-        subtree_has_match = here_matches
-        child_found = None
-
-        for ch in _children_iter(node):
-            found, child_has = dfs(ch)
-            subtree_has_match = subtree_has_match or child_has or (found is not None)
-            if found is not None and child_found is None:
-                child_found = found
-
-        if here_matches:
-            return node, True  # this node satisfies the filters, return it
-
-        if child_found is not None:
-            return child_found, True
-
-        return None, subtree_has_match
-
-    found, _ = dfs(elem)
-    return found
-
-
-
 def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxyz'):
     """
     Traverse a PartUsage subtree and return a flat list of component dicts with:
@@ -308,10 +183,16 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
 
     # --- helpers to ensure JSON-safe, plain Python floats ---
     def _to_float(x):
+        # keep real ints as ints (but don't treat bool as int)
+        if isinstance(x, bool):
+            return x
+        if isinstance(x, int):
+            return x
         try:
             return float(x)
         except Exception:
             return x
+
 
     def _normalize(d):
         # Cast any numpy scalar/array entries to Python floats
@@ -387,7 +268,7 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
 
                 rec = {
                     "name": part.name or "",
-                   # "typeID": type_id,
+                    "typeID": int(vals.get("typeID",0)),
 
                     # local pose (relative to parent; unchanged from source data)
                     "tx": ltx, "ty": lty, "tz": ltz,
@@ -418,67 +299,6 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
 
     visit(root, None)
     return out
-
-def _children_iter(elem):
-    children = getattr(elem, "owned_elements", None)
-    if not children:
-        return []
-    try:
-        return list(children)
-    except TypeError:
-        out = []
-        children.for_each(lambda e: out.append(e))
-        return out
-
-
-def find_component_partusage(elem):
-    """
-    Return the FIRST/HIGHEST PartUsage whose PartDefinition name is "Component".
-    Works with SysIDE's Python SysMLv2 API.
-    """
-    def get_part_def(node):
-        """Try to get the PartDefinition object for a PartUsage node."""
-        # Try several known API patterns
-        for attr in ("definition", "defining_feature", "definer", "part_definition", "usage_definition"):
-            val = getattr(node, attr, None)
-            if val is not None:
-                return val
-        # Some APIs expose a method
-        if hasattr(node, "get_definition"):
-            try:
-                return node.get_definition()
-            except Exception:
-                pass
-        return None
-
-    def dfs(node):
-        is_part = bool(node.try_cast(syside.PartUsage))
-        here_is_component = False
-
-        if is_part:
-            part_def = get_part_def(node)
-            if part_def and getattr(part_def, "name", None) == "Component":
-                here_is_component = True
-
-        subtree_has_component = here_is_component
-        child_found = None
-
-        for ch in _children_iter(node):
-            found, child_has = dfs(ch)
-            subtree_has_component = subtree_has_component or child_has or (found is not None)
-            if found is not None and child_found is None:
-                child_found = found
-
-        if is_part and subtree_has_component:
-            return node, True
-
-        if child_found is not None:
-            return child_found, True
-
-        return None, subtree_has_component
-
-    found, _ = dfs(elem)
-    return found
 
 def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None, dict[str, Component]]:
     """
