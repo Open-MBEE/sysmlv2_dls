@@ -2,12 +2,13 @@ from multiprocessing import context
 from annotated_types import doc
 import pytest
 import syside
+from flexo_syside_lib.core import find_partusage_by_definition
+
 from geometry_api.geometry_api import (
     create_component,
     get_sysmlv2_text,
     clear_components,
     load_from_sysml,
-    find_partusage_by_definition,
 )
 
 
