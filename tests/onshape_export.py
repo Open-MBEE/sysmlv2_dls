@@ -21,7 +21,6 @@ from typing import Dict, Iterable
 import numpy as np
 import syside
 
-from flexo_syside_lib.core import find_partusage_by_definition
 from geometry_api.geometry_api import components_from_part_world
 from onshape_connector.onshape_helper import (
     get_onshape_client,
