@@ -8,3 +8,4 @@ PyYAML==6.0.3
 packaging==25.0
 requests==2.32.5
 annotated_types==0.7.0
+onshape_client==1.6.3
