@@ -93,7 +93,6 @@ def test_load_from_sysml_and_regenerate_text():
     model_path = this_dir / "geometry_example.sysml"
     print(f"Looking for model file at: {model_path.resolve()}")
     model, _ = syside.load_model([str(model_path)])
-    model, _ = syside.load_model([str(model_path)])
 
     # Get the first document root for traversal
     context = None
