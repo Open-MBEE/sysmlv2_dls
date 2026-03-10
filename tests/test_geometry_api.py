@@ -107,7 +107,6 @@ def test_load_from_sysml_and_regenerate_text():
     print("Loading from SysMLv2 model...")
     root_comp = load_from_sysml(context)
 
-    print(root_comp.to_textual())
 #test_load_from_sysml_and_regenerate_text()
 
 
