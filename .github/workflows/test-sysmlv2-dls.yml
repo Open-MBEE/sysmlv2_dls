@@ -39,8 +39,8 @@ jobs:
         pip install git+https://github.com/Open-MBEE/sysmlv2-python-client.git@main
         pip install git+https://github.com/Open-MBEE/flexo_syside.git@main
         pip install syside==0.8.5
-        pip install -e .
         pip install pytest pytest-cov
+        pip install -e .
 
     - name: Restore SysIDE license file
       run: |
