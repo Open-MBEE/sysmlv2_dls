@@ -46,8 +46,8 @@ jobs:
       run: |
         if [ -n "$SYSIDE_LICENSE_CONTENT_B64" ]; then
           echo "SysIDE license content found, restoring license file..."
-          echo "$SYSIDE_LICENSE_CONTENT_B64" | base64 -d > automator-license.lic
-          ls -l automator-license.lic
+          echo "$SYSIDE_LICENSE_CONTENT_B64" | base64 -d > tests/automator-license.lic
+          ls -l tests/automator-license.lic
           echo "SysIDE license key found, attempting to set up license..."
           python -c "
           try:
@@ -85,4 +85,4 @@ jobs:
     - name: Remove SysIDE license file
       if: always()
       run: |
-        rm -f automator-license.lic
+        rm -f tests/automator-license.lic
