@@ -5,3 +5,5 @@
 /tests/__pycache__
 /build
 automator-license.lic
+/test-results
+/src/onshape_connector/__pycache__

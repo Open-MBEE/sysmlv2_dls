@@ -290,7 +290,7 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
                 out.append(_normalize(rec))
 
                 # This node becomes the nearest component ancestor for its descendants
-                next_state["comp_parent"] = (rec["name"])
+                next_state["comp_parent"] = (rec["name"], rec["typeID"])
 
         # Recurse
         children = getattr(el, "owned_elements", None)
@@ -343,12 +343,12 @@ def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None
                 name = getattr(el, "name", None)
             except Exception:
                 name = None
-            #print(f"{indent}▶ Visiting element: {name or type(el)}")
+            #print(f"{indent} Visiting element: {name or type(el)}")
 
             # Try to cast to PartUsage
             part = el.try_cast(syside.PartUsage)
             if part:
-                #print(f"{indent}  ✓ is PartUsage: {part.name}")
+                #print(f"{indent}   is PartUsage: {part.name}")
                 vals = collect_attrs(el)
                 #print(f"{indent}    attributes found: {vals}")
 
@@ -363,7 +363,7 @@ def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None
 
                 if has_typeid or has_component_def:
                     type_id = int(vals.get("typeID", len(_components) + 1))
-                    #print(f"{indent}    → creating Component(name={part.name}, typeID={type_id})")
+                    #print(f"{indent}     creating Component(name={part.name}, typeID={type_id})")
 
                     translation = CartesianRepresentation(
                         vals.get("tx", 0.0),
@@ -387,17 +387,17 @@ def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None
                     #print (this_component.name, this_component.typeID, this_component.translation, this_component.rotation)
                     parent_component = this_component
                 #else:
-                #    print(f"{indent}    ✗ skipping (no typeID or Component def)")
+                #    print(f"{indent}     skipping (no typeID or Component def)")
             #else:
                 # Not a PartUsage
-             #   print(f"{indent}  ✗ not a PartUsage")
+             #   print(f"{indent}   not a PartUsage")
 
             # Recurse into owned elements
             if hasattr(el, "owned_elements"):
                 try:
                     el.owned_elements.for_each(lambda c: visit(c, parent_component, level + 1))
                 except Exception as e:
-                    print(f"{indent}  ⚠️  Error iterating children of {name}: {e}")
+                    print(f"{indent}    Error iterating children of {name}: {e}")
 
 
     visit(root, None)
