@@ -31,6 +31,7 @@ pu_geometry_pkg = '''
     }
 '''
 
+
 class Component:
     def __init__(
         self,
@@ -39,6 +40,7 @@ class Component:
         translation: CartesianRepresentation,
         rotation: CartesianRepresentation,
         parent: Optional["Component"] = None,
+        extra_attrs: Optional[Dict] = None,
     ):
         self.name = name
         self.typeID = typeID
@@ -46,6 +48,7 @@ class Component:
         self.rotation = rotation
         self.parent = parent
         self.children: List[Component] = []
+        self.extra_attrs: Dict = extra_attrs or {}
 
         if parent:
             parent.children.append(self)
@@ -62,6 +65,8 @@ class Component:
             f"{ind}    attribute :>> rz={self.rotation.z};",
             f"{ind}    attribute :>> typeID = {self.typeID};",
         ]
+        for key, val in self.extra_attrs.items():
+            lines.append(f"{ind}    attribute {key} = {val!r};")
         for child in self.children:
             lines.append(child.to_textual(indent + 4))
         lines.append(f"{ind}}}")
@@ -73,6 +78,7 @@ def create_component(
     translation_data: Dict[str, float],
     rotation_data: Dict[str, float],
     parent_name: Optional[str] = None,
+    extra_attrs: Optional[Dict] = None,
 ) -> str:
     """
     API endpoint to create a new geometric component and optionally attach it to a parent.
@@ -93,7 +99,7 @@ def create_component(
         if not parent_component:
             raise ValueError(f"Parent component '{parent_name}' not found.")
 
-    component = Component(name, typeID, translation, rotation, parent=parent_component)
+    component = Component(name, typeID, translation, rotation, parent=parent_component, extra_attrs=extra_attrs)
     _components[name] = component
     return name
 
@@ -150,17 +156,18 @@ def components_from_part(root):
             el.owned_elements.for_each(collect_attr)
 
             if "typeID" in vals:
+                extra = dict(vals)
+                typeID = int(extra.pop("typeID"))
+                tx = extra.pop("tx", 0.0); ty = extra.pop("ty", 0.0); tz = extra.pop("tz", 0.0)
+                rx = extra.pop("rx", 0.0); ry = extra.pop("ry", 0.0); rz = extra.pop("rz", 0.0)
                 rec = {
                     "name": part.name or "",
-                    "typeID": int(vals["typeID"]),
-                    "tx": vals.get("tx", 0.0),
-                    "ty": vals.get("ty", 0.0),
-                    "tz": vals.get("tz", 0.0),
-                    "rx": vals.get("rx", 0.0),
-                    "ry": vals.get("ry", 0.0),
-                    "rz": vals.get("rz", 0.0),
+                    "typeID": typeID,
+                    "tx": tx, "ty": ty, "tz": tz,
+                    "rx": rx, "ry": ry, "rz": rz,
                     "parent_name": parent_info[0] if parent_info else None,
                     "parent_typeID": parent_info[1] if parent_info else None,
+                    **extra,
                 }
                 out.append(rec)
                 current_info = (rec["name"], rec["typeID"])
@@ -266,9 +273,14 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
                 if angles_in_degrees:
                     arx, ary, arz = to_deg(arx), to_deg(ary), to_deg(arz)
 
+                extra = dict(vals)
+                extra.pop("tx", None); extra.pop("ty", None); extra.pop("tz", None)
+                extra.pop("rx", None); extra.pop("ry", None); extra.pop("rz", None)
+                extra.pop("typeID", None)
+                onshape_url = extra.pop("onshape_url", None)
                 rec = {
                     "name": part.name or "",
-                    "typeID": int(vals.get("typeID",0)),
+                    "typeID": int(vals.get("typeID", 0)),
 
                     # local pose (relative to parent; unchanged from source data)
                     "tx": ltx, "ty": lty, "tz": ltz,
@@ -285,7 +297,9 @@ def components_from_part_world(root, *, angles_in_degrees=False, euler_axes='sxy
                     "parent_typeID": parent_state["comp_parent"][1] if parent_state["comp_parent"] else None,
 
                     # optional metadata
-                    "onshape_url": vals.get("onshape_url"),
+                    "onshape_url": onshape_url,
+
+                    **extra,
                 }
                 out.append(_normalize(rec))
 
@@ -375,6 +389,10 @@ def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None
                         vals.get("ry", 0.0),
                         vals.get("rz", 0.0),
                     )
+                    extra = dict(vals)
+                    extra.pop("typeID", None)
+                    extra.pop("tx", None); extra.pop("ty", None); extra.pop("tz", None)
+                    extra.pop("rx", None); extra.pop("ry", None); extra.pop("rz", None)
 
                     this_component = Component(
                         name=part.name or f"Unnamed_{len(_components)}",
@@ -382,6 +400,7 @@ def load_from_sysml(root, clear_existing: bool = True) -> tuple[Component | None
                         translation=translation,
                         rotation=rotation,
                         parent=parent_component,
+                        extra_attrs=extra,
                     )
                     _components[this_component.name] = this_component
                     #print (this_component.name, this_component.typeID, this_component.translation, this_component.rotation)

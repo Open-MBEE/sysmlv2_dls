@@ -58,15 +58,6 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        with:
-          args: >
-            -Dsonar.scanner.skipJreProvisioning=true
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_SCANNER_SKIP_JRE_PROVISIONING: "true"
-
       - name: Run tests with coverage
         env:
           SYSIDE_LICENSE_KEY: ${{ secrets.SYSIDE_LICENSE_KEY }}
@@ -76,5 +67,14 @@ jobs:
         run: |
           coverage run -m pytest
           coverage xml -o coverage.xml
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        with:
+          args: >
+            -Dsonar.scanner.skipJreProvisioning=true
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_SCANNER_SKIP_JRE_PROVISIONING: "true"
 
 
