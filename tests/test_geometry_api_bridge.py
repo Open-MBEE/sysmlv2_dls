@@ -86,8 +86,8 @@ def test_get_text_missing_root_raises():
 
 
 def _load_geometry_example_root():
-    """sysmlv2_flexo_bridge equivalent of the syside test's
-    `syside.load_model` + `find_partusage_by_definition` setup.
+    """Load `geometry_example.sysml` and locate its `geometryroot` PartUsage
+    via sysmlv2_flexo_bridge's textual->JSON->model conversion pipeline.
 
     sysmlv2_flexo_bridge (github.com/planetaryutilities/sysmlv2_flexo_bridge)
     and the sysmlv2 wheel it drives are private planetaryutilities repos;
@@ -126,8 +126,7 @@ def test_load_from_sysml_and_regenerate_text():
     assert root_comp is not None
     # geometryroot is declared `:Component, Onshape_Component, Omniverse_Component`,
     # so it's the only node in this fixture with "Component" in part_definitions
-    # (nexus/solari_* are typed Onshape_Component/Omniverse_Component only,
-    # matching the original Syside-backed geometry_api's semantics exactly).
+    # (nexus/solari_* are typed Onshape_Component/Omniverse_Component only).
     assert "geometryroot" in components
 
 
