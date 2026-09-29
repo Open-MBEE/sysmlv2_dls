@@ -1,8 +1,8 @@
-   
-from flexo_syside_lib.committer import commit_sysml_to_flexo
+
+from sysmlv2_flexo_bridge.committer import commit_sysml_to_flexo
 
 
-DEFAULT_PROJECT_NAME = "Flexo_SysIDE_TestProject"
+DEFAULT_PROJECT_NAME = "Flexo_Test_Project"
 sysml_sample = """
     package TestPackage {
         part Satellite {
