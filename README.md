@@ -53,13 +53,11 @@ pip install --upgrade pip
 pip install -e .
 ```
 
-pip install ..\flexo_syside
 pip install ..\sysmlv2-python-client
 pip install .
-pip install syside-license syside --index-url https://gitlab.com/api/v4/projects/69960816/packages/pypi/simple --upgrade
 
 The base dependencies include `astropy` for Cartesian representations and
-`numpy` for matrix math. Some optional modules (for example, `syside` or the
+`numpy` for matrix math. Some optional modules (for example, the
 Onshape client) may be required depending on which connectors you use.
 
 ## Configuring the Onshape connector

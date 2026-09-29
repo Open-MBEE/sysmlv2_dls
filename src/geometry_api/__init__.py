@@ -1,3 +1,0 @@
-"""Public package interface for geometry_api."""
-
-from .geometry_api import *
